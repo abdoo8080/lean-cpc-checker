@@ -8,6 +8,7 @@ name = "Checker"
 [[lean_exe]]
 name = "checker"
 root = "Main"
+supportInterpreter = true
 
 [[require]]
 name = "smt"
