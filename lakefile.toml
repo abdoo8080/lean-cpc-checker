@@ -1,0 +1,15 @@
+name = "cpc-checker"
+defaultTargets = ["Checker", "checker"]
+precompileModules = true
+
+[[lean_lib]]
+name = "Checker"
+
+[[lean_exe]]
+name = "checker"
+root = "Main"
+
+[[require]]
+name = "smt"
+scope = "ufmg-smite"
+rev = "213932fcac9c7757625cb917427d95897ea5fd1e"
