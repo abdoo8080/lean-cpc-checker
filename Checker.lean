@@ -1,8 +1,14 @@
 import Smt
 import Smt.Real
 
+def IO.printlnAndFlush {α} [ToString α] (a : α) : IO Unit := do
+  IO.println a
+  (← IO.getStdout).flush
+
 open Lean
 open Qq
+
+namespace Checker
 
 def trace (r : Except Exception α) : MetaM MessageData :=
   return match r with
@@ -95,7 +101,7 @@ def checkProof (pf : cvc5.Proof) : MetaM Unit := withTraceNode `checkProof trace
   withDecls (getUninterpretedSorts pf.getResult).toArray (getFreeVars pf.getResult).toArray fun fvNames xs => do
   let (type, value, mvs) ← Smt.reconstructProof pf fvNames
   if !mvs.isEmpty then
-    logInfo "proof contains trusted steps"
+    IO.printlnAndFlush "[reconstruct] proof contains trusted steps"
     for mv in mvs do
       let p : Q(Prop) ← mv.getType
       mv.assign q(sorry : $p)
@@ -103,7 +109,7 @@ def checkProof (pf : cvc5.Proof) : MetaM Unit := withTraceNode `checkProof trace
   let value ← Meta.mkLambdaFVars xs value
   let type ← Meta.mkForallFVars xs type
   let t1 ← IO.monoMsNow
-  IO.println (t1 - t0)
+  IO.printlnAndFlush s!"[time] reconstruct: {t1 - t0}"
   let r ← withTraceNode `kernel trace do
     return (← getEnv).addDecl (← getOptions) (.thmDecl { name := ← Lean.mkAuxName `thm 1, levelParams := [], type := type, value })
   match r with
@@ -113,18 +119,18 @@ def checkProof (pf : cvc5.Proof) : MetaM Unit := withTraceNode `checkProof trace
     modifyEnv fun _ => env
     logInfo "ok"
   let t2 ← IO.monoMsNow
-  IO.println (t2 - t1)
+  IO.printlnAndFlush s!"[time] kernel: {t2 - t1}"
 
 def solveAndCheck (query : String) : MetaM Unit := withTraceNode `solveAndCheck trace do
   let t0 ← IO.monoMsNow
   match ← solve query with
   | .error e =>
     let t1 ← IO.monoMsNow
-    IO.println (t1 - t0)
+    IO.printlnAndFlush s!"[time] solve: {t1 - t0}"
     logError (repr e)
   | .ok pf =>
     let t1 ← IO.monoMsNow
-    IO.println (t1 - t0)
+    IO.printlnAndFlush s!"[time] solve: {t1 - t0}"
     activateScoped `Classical
     checkProof pf
 
@@ -136,3 +142,5 @@ def runSolveAndCheck (query : String) : MetaM Unit := do
 def elabSolveAndCheck (path : String) : Elab.Command.CommandElabM Unit := do
   let query ← IO.FS.readFile path
   Elab.Command.runTermElabM fun _ => solveAndCheck query
+
+end Checker
