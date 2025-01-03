@@ -6,7 +6,7 @@ unsafe def main (args : List String) : IO Unit := do
   let query ← IO.FS.readFile args[0]!
   let t0 ← IO.monoMsNow
   initSearchPath (← findSysroot)
-  withImportModules #[`Smt, `Smt.Real] Options.empty 0 fun env => do
+  withImportModules #[`Smt, `Smt.Rat] Options.empty 0 fun env => do
     let t1 ← IO.monoMsNow
     IO.printlnAndFlush s!"[time] load: {t1 - t0}"
     let coreContext := { fileName := "cpc-checker", fileMap := default }
