@@ -1,4 +1,4 @@
-import Smt
+import Smt.Reconstruct
 
 def IO.printlnAndFlush {α} [ToString α] (a : α) : IO Unit := do
   IO.println a
