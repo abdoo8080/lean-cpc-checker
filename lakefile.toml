@@ -1,9 +1,12 @@
 name = "cpc-checker"
-defaultTargets = ["Checker", "checker"]
+defaultTargets = ["Checker", "Definitions", "checker"]
 precompileModules = true
 
 [[lean_lib]]
 name = "Checker"
+
+[[lean_lib]]
+name = "Definitions"
 
 [[lean_exe]]
 name = "checker"
