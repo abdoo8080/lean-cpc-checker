@@ -1,3 +1,11 @@
+prelude
+import Init.Classical
+import Init.Core
+import Init.Data.AC
+import Init.Data.Int
+import Init.Data.List.Basic
+import Init.Data.List.Notation
+
 inductive XOr (p q : Prop) : Prop where
   | inl : p → ¬q → XOr p q
   | inr : ¬p → q → XOr p q
@@ -1842,9 +1850,6 @@ def divInt : Int → Int → Rat
     Rat.normalize m (10 ^ e) <| Nat.ne_of_gt <| Nat.pos_pow_of_pos _ (by decide)
   else
     (m * 10 ^ e : Nat)
-
-instance : OfScientific Rat where
-  ofScientific m s e := Rat.ofScientific (OfNat.ofNat m) s (OfNat.ofNat e)
 
 /-- Rational number strictly less than relation, as a `Bool`. -/
 protected def blt (a b : Rat) : Bool :=
