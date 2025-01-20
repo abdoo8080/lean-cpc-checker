@@ -12,5 +12,5 @@ supportInterpreter = true
 
 [[require]]
 name = "smt"
-scope = "ufmg-smite"
-rev = "4cdea120ba132ba0cb817e7fd516a967f1148752"
+git = "https://github.com/abdoo8080/lean-smt"
+rev = "01e22537dadfd9af71b0ec1efe5cf33e7140dfdf"
