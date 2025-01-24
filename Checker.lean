@@ -122,14 +122,13 @@ def checkProof (pf : cvc5.Proof) : MetaM Unit := withTraceNode `checkProof trace
 
 def solveAndCheck (query : String) : MetaM Unit := withTraceNode `solveAndCheck trace do
   let t0 ← IO.monoMsNow
-  match ← solve query with
+  let r ← solve query
+  let t1 ← IO.monoMsNow
+  IO.printlnAndFlush s!"[time] solve: {t1 - t0}"
+  match r with
   | .error e =>
-    let t1 ← IO.monoMsNow
-    IO.printlnAndFlush s!"[time] solve: {t1 - t0}"
     logError (repr e)
   | .ok pf =>
-    let t1 ← IO.monoMsNow
-    IO.printlnAndFlush s!"[time] solve: {t1 - t0}"
     activateScoped `Classical
     checkProof pf
 
