@@ -16,4 +16,4 @@ supportInterpreter = true
 [[require]]
 name = "smt"
 git = "https://github.com/abdoo8080/lean-smt"
-rev = "01e22537dadfd9af71b0ec1efe5cf33e7140dfdf"
+rev = "2952967007ca3add2ca2551d864c5f13c203f1a9"
