@@ -31,6 +31,7 @@ namespace Checker
 open cvc5 in
 def solve' (query : String) : IO (Except Error Proof) := do
   Solver.run (← TermManager.new) do
+    Solver.setOption "incremental" "false"
     Solver.setOption "dag-thresh" "0"
     Solver.setOption "enum-inst" "true"
     Solver.setOption "cegqi-midpoint" "true"
@@ -38,12 +39,10 @@ def solve' (query : String) : IO (Except Error Proof) := do
     Solver.setOption "proof-elim-subtypes" "true"
     Solver.setOption "proof-granularity" "dsl-rewrite"
     Solver.parse query
-    let r ← Solver.checkSat
-    if r.isUnsat then
-      let ps ← Solver.getProof
-      if h : 0 < ps.size then
-        return ps[0]
-    throw (Error.error s!"Expected unsat, got {r}")
+    let ps ← Solver.getProof
+    if h : 0 < ps.size then
+      return ps[0]
+    throw (Error.error s!"Expected a proof, got none")
 
 def checkAndPrintLogs (pf : cvc5.Proof) : MetaM Unit := do
   activateScoped `Classical

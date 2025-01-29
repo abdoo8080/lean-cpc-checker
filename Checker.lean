@@ -17,6 +17,7 @@ def trace (r : Except Exception α) : MetaM MessageData :=
 open cvc5 in
 def solve (query : String) : MetaM (Except Error Proof) := withTraceNode `solve trace do
   Solver.run (← TermManager.new) do
+    Solver.setOption "incremental" "false"
     Solver.setOption "dag-thresh" "0"
     Solver.setOption "enum-inst" "true"
     Solver.setOption "cegqi-midpoint" "true"
@@ -24,12 +25,10 @@ def solve (query : String) : MetaM (Except Error Proof) := withTraceNode `solve 
     Solver.setOption "proof-elim-subtypes" "true"
     Solver.setOption "proof-granularity" "dsl-rewrite"
     Solver.parse query
-    let r ← Solver.checkSat
-    if r.isUnsat then
-      let ps ← Solver.getProof
-      if h : 0 < ps.size then
-        return ps[0]
-    throw (self := instMonadExceptOfMonadExceptOf _ _) (Error.error s!"Expected unsat, got {r}")
+    let ps ← Solver.getProof
+    if h : 0 < ps.size then
+      return ps[0]
+    throw (self := instMonadExceptOfMonadExceptOf _ _) (Error.error s!"Expected a proof, got none")
 
 partial def getBoundVars (t : cvc5.Term) : Std.HashSet cvc5.Term :=
   go t {}
