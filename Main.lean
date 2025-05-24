@@ -44,13 +44,13 @@ def solve' (query : String) : IO (Except Error Proof) := do
       return ps[0]
     throw (Error.error s!"Expected a proof, got none")
 
-def checkAndPrintLogs (pf : cvc5.Proof) : MetaM Unit := do
+def checkAndPrintLogs (pf : cvc5.Proof) (native : Bool) : MetaM Unit := do
   activateScoped `Classical
-  checkProof pf
+  checkProof pf native
   printTraces
   _ ← Language.reportMessages (← Core.getMessageLog) (← getOptions)
 
-unsafe def solveAndCheck' (query : String) : IO Unit := do
+unsafe def solveAndCheck' (query : String) (native : Bool) : IO Unit := do
   let t0 ← IO.monoMsNow
   let r ← solve' query
   let t1 ← IO.monoMsNow
@@ -61,15 +61,28 @@ unsafe def solveAndCheck' (query : String) : IO Unit := do
   | .ok pf =>
     let t0 ← IO.monoMsNow
     initSearchPath (← findSysroot)
-    withImportModules module Options.empty 0 fun env => do
-      let t1 ← IO.monoMsNow
-      IO.printlnAndFlush s!"[time] load: {t1 - t0}"
-      let coreContext := { fileName := "cpc-checker", fileMap := default }
-      let coreState := { env }
-      _ ← Meta.MetaM.toIO (checkAndPrintLogs pf) coreContext coreState
+    enableInitializersExecution
+    let env ← importModules module {} 0 (loadExts := true)
+    let t1 ← IO.monoMsNow
+    IO.printlnAndFlush s!"[time] load: {t1 - t0}"
+    let coreContext := { fileName := "cpc-checker", fileMap := default }
+    let coreState := { env }
+    _ ← Meta.MetaM.toIO (checkAndPrintLogs pf native) coreContext coreState
 
 end Checker
 
+def parseNative (s : String) : Option Bool :=
+  match s with
+  | "true"  => some true
+  | "false" => some false
+  | _       => none
+
 unsafe def main (args : List String) : IO Unit := do
-  let query ← IO.FS.readFile args[0]!
-  Checker.solveAndCheck' query
+  if args.length < 2 then
+    IO.eprintln "Usage: cvc5-checker <native> <file.smt2>"
+    return
+  let some native := parseNative args[0]! |
+    IO.eprintln "Invalid argument for native, expected true or false"
+    return
+  let query ← IO.FS.readFile args[1]!
+  Checker.solveAndCheck' query native

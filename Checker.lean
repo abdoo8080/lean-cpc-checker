@@ -79,7 +79,7 @@ def withDeclaredSorts [Inhabited α] (ss : Array cvc5.Sort) (k : Std.HashMap Str
     k fvNames xs)
 
 def withDeclaredFuns [Inhabited α] (vs : Array cvc5.Term) (fvNames : Std.HashMap String FVarId) (k : Std.HashMap String FVarId → Array Expr → MetaM α) : MetaM α := do
-  let ctx := ⟨fvNames⟩
+  let ctx := { userNames := fvNames, native := false }
   let state := ⟨{}, {}, 0, #[], #[]⟩
   let fvs : Array (Name × (Array Expr → MetaM Expr)) := vs.map fun v => (Name.mkSimple v.getSymbol!, fun _ => do
     let (t, _) ← (Smt.Reconstruct.reconstructSort v.getSort).run ctx state
@@ -94,10 +94,11 @@ def withDecls [Inhabited α] (ss : Array cvc5.Sort) (vs : Array cvc5.Term) (k : 
   withDeclaredSorts ss fun fvNames₁ ts => withDeclaredFuns vs fvNames₁ fun fvNames₂ fvs =>
     k (fvNames₁.fold (·.insert) fvNames₂) (ts ++ fvs)
 
-def checkProof (pf : cvc5.Proof) : MetaM Unit := withTraceNode `checkProof trace do
+def checkProof (pf : cvc5.Proof) (native : Bool) : MetaM Unit := withTraceNode `checkProof trace do
   let t0 ← IO.monoMsNow
   withDecls (getUninterpretedSorts pf.getResult).toArray (getFreeVars pf.getResult).toArray fun fvNames xs => do
-  let (type, value, mvs) ← Smt.reconstructProof pf fvNames
+  let ctx := { userNames := fvNames, native := native }
+  let (_, _, type, value, mvs) ← Smt.reconstructProof pf ctx
   if !mvs.isEmpty then
     IO.printlnAndFlush "[reconstruct] proof contains trusted steps"
     for mv in mvs do
@@ -109,17 +110,16 @@ def checkProof (pf : cvc5.Proof) : MetaM Unit := withTraceNode `checkProof trace
   let t1 ← IO.monoMsNow
   IO.printlnAndFlush s!"[time] reconstruct: {t1 - t0}"
   let r ← withTraceNode `kernel trace do
-    return (← getEnv).addDecl (← getOptions) (.thmDecl { name := ← Lean.mkAuxName `thm 1, levelParams := [], type := type, value })
+    return (← getEnv).toKernelEnv.addDecl (← getOptions) (.thmDecl { name := ← Lean.mkAuxName `thm 1, levelParams := [], type := type, value })
   match r with
   | .error e =>
     logError m!"Error: {e.toMessageData (← getOptions)}"
   | .ok env =>
-    modifyEnv fun _ => env
     logInfo "ok"
   let t2 ← IO.monoMsNow
   IO.printlnAndFlush s!"[time] kernel: {t2 - t1}"
 
-def solveAndCheck (query : String) : MetaM Unit := withTraceNode `solveAndCheck trace do
+def solveAndCheck (query : String) (native : Bool) : MetaM Unit := withTraceNode `solveAndCheck trace do
   let t0 ← IO.monoMsNow
   let r ← solve query
   let t1 ← IO.monoMsNow
@@ -129,15 +129,15 @@ def solveAndCheck (query : String) : MetaM Unit := withTraceNode `solveAndCheck 
     logError (repr e)
   | .ok pf =>
     activateScoped `Classical
-    checkProof pf
+    checkProof pf native
 
-def runSolveAndCheck (query : String) : MetaM Unit := do
-  solveAndCheck query
+def runSolveAndCheck (query : String) (native : Bool) : MetaM Unit := do
+  solveAndCheck query native
   printTraces
   _ ← Language.reportMessages (← Core.getMessageLog) (← getOptions)
 
-def elabSolveAndCheck (path : String) : Elab.Command.CommandElabM Unit := do
+def elabSolveAndCheck (path : String) (native := false) : Elab.Command.CommandElabM Unit := do
   let query ← IO.FS.readFile path
-  Elab.Command.runTermElabM fun _ => solveAndCheck query
+  Elab.Command.runTermElabM fun _ => solveAndCheck query native
 
 end Checker
